@@ -4,7 +4,8 @@
 #define FAN 9           // Output pin for fan
 
 ClickEncoder *encoder;
-int16_t last, value;
+int16_t last;
+int16_t value = 80;
 int pwmOut = 255; //full speed
 
 void timerIsr() {
