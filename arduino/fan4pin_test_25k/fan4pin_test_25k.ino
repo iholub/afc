@@ -3,6 +3,7 @@ const int PotPin = 0;  // Analog 0
 
 void setup()
 {
+  Serial.begin(9600);
   pinMode(PWMPin, OUTPUT);
   // Fast PWM Mode, Prescaler = /8
   // PWM on Pin 3, Pin 11 disabled
