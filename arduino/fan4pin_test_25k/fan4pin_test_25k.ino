@@ -15,20 +15,13 @@ void setup()
   OCR2B = 0;    // duty cycle for Pin 3 (0-79) generates 1 500nS pulse even when 0
 }
 
-int in = 1000;
-
 void loop()
 {
-  int out;
+  int in, out;
 
+  in = analogRead(PotPin);
   Serial.println(in);
-  //in = analogRead(PotPin);
   out = map(in, 0, 1023, 0, 79);
   OCR2B = out;
-  delay(3000);
-  
-  in -= 200;
-  if (in < 0) {
-    in = 1000;
-  }
+  delay(200);
 }
