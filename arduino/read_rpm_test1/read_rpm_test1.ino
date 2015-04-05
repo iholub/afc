@@ -17,6 +17,7 @@ volatile byte half_revolutions;
      rpm = 30*1000/(millis() - timeold)*half_revolutions;
      timeold = millis();
      half_revolutions = 0;
+     Serial.print("rpm1: ");
      Serial.println(rpm,DEC);
    }
  }

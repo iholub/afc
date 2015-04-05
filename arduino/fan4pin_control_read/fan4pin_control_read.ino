@@ -2,7 +2,7 @@ const int PWMPin = 3;  // Only works with Pin 3
 const int PotPin = A0;  // Analog 0
 
 // read RPM
-int half_revolutions = 0;
+volatile int half_revolutions = 0;
 int rpm = 0;
 unsigned long lastmillis = 0;
 
@@ -46,7 +46,8 @@ void loop()
   if (currTime >= nextPotRead) {
     nextPotRead = currTime + 50;
     in = analogRead(PotPin);
-    if (previousPotValue != in) {
+    if ((in < previousPotValue - 5) ||
+    (in > previousPotValue + 5)) {
       previousPotValue = in;
       Serial.println("pot: ");
       Serial.println(in);
