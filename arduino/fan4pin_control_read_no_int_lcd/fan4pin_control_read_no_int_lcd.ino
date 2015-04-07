@@ -22,7 +22,7 @@ const int PotPin = A0;  // Analog 0
 // read RPM
 volatile int half_revolutions = 0;
 int rpm = 0;
-unsigned long lastmillis = 0;
+unsigned long lcdTimeNext = 0;
 
 unsigned long nextPotRead = 0;
 
@@ -30,6 +30,9 @@ int previousPotValue = -1;
 
 int stateOld = LOW;
 boolean stateHigh = false;
+
+int time = 0;
+unsigned long timeNext = 0;
 
 void setup()
 {
@@ -50,35 +53,46 @@ void setup()
 
 void loop()
 {
+  unsigned long ct = millis();
+  if (ct >= timeNext) {
+    timeNext = ct + 300;
+    time++;
+    if (time > 99) {
+      time = 0;
+    }
+  }  
   int state = digitalRead(5);
   if (stateOld == LOW && state == HIGH) {
     half_revolutions++;
   }
   stateOld = state;
-  if (millis() - lastmillis == 1000){ //Uptade every one second, this will be equal to reading frecuency (Hz).
+  ct = millis();
+  if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
+    lcdTimeNext = ct + 1000;
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
+    lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Rpm: ");
     lcd.print(rpm);
+    lcd.print(" ");
+    lcd.print(time);
     lcd.setCursor(0,1);
     lcd.print("Hz: ");
     lcd.print(half_revolutions);
-    lcd.setCursor(0,1);
 
     //Serial.print("RPM =\t"); //print the word "RPM" and tab.
     //Serial.print(rpm); // print the rpm value.
     //Serial.print("\t Hz=\t"); //print the word "Hz".
     //Serial.println(half_revolutions); //print revolutions per second or Hz. And print new line or enter.
     half_revolutions = 0; // Restart the RPM counter
-    lastmillis = millis(); // Uptade lasmillis
   }  
 
   int in, out;
 
-  unsigned long currTime = millis();
-  if (currTime >= nextPotRead) {
-    nextPotRead = currTime + 50;
+  ct = millis();
+  if (ct >= nextPotRead) {
+    nextPotRead = ct + 50;
     in = analogRead(PotPin);
     if ((in < previousPotValue - 5) ||
       (in > previousPotValue + 5)) {
