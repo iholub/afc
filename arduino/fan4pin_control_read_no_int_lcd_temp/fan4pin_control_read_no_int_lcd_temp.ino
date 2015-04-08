@@ -10,7 +10,7 @@
 #include <DallasTemperature.h>
 #define ONE_WIRE_BUS 7
 #define SENSORS_COUNT 2
-#define TEMPERATURE_PRECISION 11
+#define TEMPERATURE_PRECISION 9
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature. 
@@ -47,6 +47,8 @@ boolean stateHigh = false;
 
 int time = 0;
 unsigned long timeNext = 0;
+
+unsigned long mcrMax = 0;
 
 void setup()
 {
@@ -87,8 +89,7 @@ void setup()
 
 void loop()
 {
-  sensors.requestTemperatures();
-
+  unsigned long m1 = micros();
   unsigned long ct = millis();
   if (ct >= timeNext) {
     timeNext = ct + 300;
@@ -103,7 +104,10 @@ void loop()
   }
   stateOld = state;
   ct = millis();
+  boolean disp = false;
   if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
+    sensors.requestTemperatures();
+    disp = true;
     lcdTimeNext = ct + 1000;
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
@@ -111,8 +115,8 @@ void loop()
     lcd.setCursor(0,0);
     lcd.print("Rpm: ");
     lcd.print(rpm);
-    lcd.print(" ");
-    lcd.print(time);
+    lcd.print(" m:");
+    lcd.print(mcrMax);
     for (int i = 0; i < counter; i++) {
       printTemperature(sensor[i], i);
     }
@@ -122,6 +126,7 @@ void loop()
     //Serial.print("\t Hz=\t"); //print the word "Hz".
     //Serial.println(half_revolutions); //print revolutions per second or Hz. And print new line or enter.
     half_revolutions = 0; // Restart the RPM counter
+    mcrMax = 0;
   }  
 
   int in, out;
@@ -139,7 +144,10 @@ void loop()
       OCR2B = out;
     }
   }
-
+  unsigned long mcr = micros() - m1;
+  if (!disp && (mcr > mcrMax)) {
+    mcrMax = mcr;
+  }
 }
 // this code will be executed every time the interrupt 0 (pin2) gets low.
 void rpm_fan(){
