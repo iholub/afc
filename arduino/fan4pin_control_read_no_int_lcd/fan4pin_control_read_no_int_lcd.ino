@@ -34,6 +34,8 @@ boolean stateHigh = false;
 int time = 0;
 unsigned long timeNext = 0;
 
+unsigned long mcrMax = 0;
+
 void setup()
 {
   Serial.begin(9600);
@@ -53,6 +55,7 @@ void setup()
 
 void loop()
 {
+  unsigned long m1 = micros();
   unsigned long ct = millis();
   if (ct >= timeNext) {
     timeNext = ct + 300;
@@ -67,7 +70,9 @@ void loop()
   }
   stateOld = state;
   ct = millis();
+  boolean disp = false;
   if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
+    disp = true;
     lcdTimeNext = ct + 1000;
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
@@ -75,17 +80,15 @@ void loop()
     lcd.setCursor(0,0);
     lcd.print("Rpm: ");
     lcd.print(rpm);
-    lcd.print(" ");
-    lcd.print(time);
-    lcd.setCursor(0,1);
-    lcd.print("Hz: ");
-    lcd.print(half_revolutions);
+    lcd.print(" m:");
+    lcd.print(mcrMax);
 
     //Serial.print("RPM =\t"); //print the word "RPM" and tab.
     //Serial.print(rpm); // print the rpm value.
     //Serial.print("\t Hz=\t"); //print the word "Hz".
     //Serial.println(half_revolutions); //print revolutions per second or Hz. And print new line or enter.
     half_revolutions = 0; // Restart the RPM counter
+    mcrMax = 0;
   }  
 
   int in, out;
@@ -103,12 +106,16 @@ void loop()
       OCR2B = out;
     }
   }
-
+  unsigned long mcr = micros() - m1;
+  if (!disp && (mcr > mcrMax)) {
+    mcrMax = mcr;
+  }
 }
 // this code will be executed every time the interrupt 0 (pin2) gets low.
 void rpm_fan(){
   half_revolutions++;
 }
+
 
 
 
