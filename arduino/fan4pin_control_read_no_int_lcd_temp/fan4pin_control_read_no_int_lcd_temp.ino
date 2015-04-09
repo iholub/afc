@@ -107,8 +107,8 @@ void loop()
   boolean disp = false;
   if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
     sensors.requestTemperatures();
+    delay(500);
     disp = true;
-    lcdTimeNext = ct + 1000;
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
     lcd.clear();
@@ -127,6 +127,7 @@ void loop()
     //Serial.println(half_revolutions); //print revolutions per second or Hz. And print new line or enter.
     half_revolutions = 0; // Restart the RPM counter
     mcrMax = 0;
+    lcdTimeNext = millis() + 1000;
   }  
 
   int in, out;
