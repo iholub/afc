@@ -49,9 +49,17 @@ void loop()
     Serial.print("Rpm: ");
     Serial.print(rpm);
     Serial.print(" avg low: ");
-    Serial.print(lSum/lCount);
+    if (lCount > 0) {
+      Serial.print(lSum/lCount);      
+    } else {
+      Serial.print("---");
+    }
     Serial.print(" avg high: ");
-    Serial.print(hSum/hCount);
+    if (hCount > 0) {
+      Serial.print(hSum/hCount);      
+    } else {
+      Serial.print("---");
+    }
     Serial.print(" count low: ");
     Serial.print(lCount);
     Serial.print(" count high: ");
