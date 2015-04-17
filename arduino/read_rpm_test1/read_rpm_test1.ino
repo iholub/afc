@@ -12,13 +12,15 @@ volatile byte half_revolutions;
  void loop()
  {
    if (half_revolutions >= 20) { 
+     cli();
      //Update RPM every 20 counts, increase this for better RPM resolution,
      //decrease for faster update
      rpm = 30*1000/(millis() - timeold)*half_revolutions;
-     timeold = millis();
      half_revolutions = 0;
      Serial.print("rpm1: ");
      Serial.println(rpm,DEC);
+     timeold = millis();
+     sei();
    }
  }
  void rpm_fun()
