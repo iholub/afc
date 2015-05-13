@@ -39,9 +39,11 @@ unsigned long timeNext = 0;
 
 unsigned long mcrMax = 0;
 
+unsigned long tempTimeNext;
+
 void setup()
 {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
   // Fast PWM Mode, Prescaler = /8
@@ -55,6 +57,7 @@ void setup()
 
     // Start up the library
   sensors.begin();
+  sensors.setWaitForConversion(false);
 
   // Must be called before search()
   oneWire.reset_search();
@@ -62,6 +65,9 @@ void setup()
   if (oneWire.search(sensorAddress)) {
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
   }
+
+  sensors.requestTemperatures();
+  tempTimeNext = millis() + 100;
 
   Wire.begin(0x31);
   Wire.onRequest(slavesRespond);  // Perform on master's request
@@ -86,18 +92,9 @@ void loop()
   ct = millis();
   boolean disp = false;
   if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
-    sensors.requestTemperatures();
     disp = true;
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
-    //Serial.print("Rpm: ");
-    //Serial.print(rpm);
-    //Serial.print(" m:");
-    //Serial.print(mcrMax);
-
-    float tempC = sensors.getTempC(sensorAddress);
-    tempInt = round(tempC);
-    //TODO -127
     //Todo fix
     rpm = 1000;
 
@@ -105,6 +102,17 @@ void loop()
     mcrMax = 0;
     lcdTimeNext = millis() + 1000;
   }  
+
+  if (millis() >= tempTimeNext) {
+    float tempC = sensors.getTempC(sensorAddress);
+    sensors.requestTemperatures();
+    tempTimeNext = millis() + 100;
+    tempInt = round(tempC);
+    Serial.print(tempC);
+    Serial.print(" ");
+    Serial.println(tempInt);
+    //TODO -127
+  }
 
   int in, out;
 

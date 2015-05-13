@@ -113,15 +113,15 @@ void loop()
     
     lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print("Rpm: ");
     lcd.print(rpm);
-    lcd.print(" m:");
+    lcd.setCursor(5,0);
+    lcd.print(tempInt);
+    lcd.setCursor(9,0);
     lcd.print(mcrMax);
 
     lcd.setCursor(0,1);
-    lcd.print("Rpm: ");
     lcd.print(rpm2);
-    lcd.print(" t:");
+    lcd.setCursor(5,1);
     lcd.print(temp2);
 
     //Serial.print("RPM =\t"); //print the word "RPM" and tab.
