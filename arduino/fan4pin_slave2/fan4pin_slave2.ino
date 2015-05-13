@@ -7,7 +7,10 @@
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
-
+#define RPM_PERIOD 1000
+#define TEMP_PERIOD 100
+#define POT_PERIOD 100
+#define SLAVE_ADDR 0x31
 #define TEMPERATURE_PRECISION 9
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
@@ -23,23 +26,14 @@ int volatile tempInt = -127;
 /*-----( Declare Variables )-----*/
 
 // read RPM
-volatile int half_revolutions = 0;
-int rpm = 0;
-unsigned long lcdTimeNext = 0;
-
-unsigned long nextPotRead = 0;
+int stateOld = LOW;
+int half_revolutions = 0;
+int volatile rpm = 0;
+unsigned long rpmTimeNext = 0;
+unsigned long potTimeNext = 0;
+unsigned long tempTimeNext;
 
 int previousPotValue = -1;
-
-int stateOld = LOW;
-boolean stateHigh = false;
-
-int time = 0;
-unsigned long timeNext = 0;
-
-unsigned long mcrMax = 0;
-
-unsigned long tempTimeNext;
 
 void setup()
 {
@@ -67,72 +61,63 @@ void setup()
   }
 
   sensors.requestTemperatures();
-  tempTimeNext = millis() + 100;
+  tempTimeNext = millis() + TEMP_PERIOD;
 
-  Wire.begin(0x31);
+  Wire.begin(SLAVE_ADDR);
   Wire.onRequest(slavesRespond);  // Perform on master's request
 }
 
 void loop()
 {
-  unsigned long m1 = micros();
-  unsigned long ct = millis();
-  if (ct >= timeNext) {
-    timeNext = ct + 300;
-    time++;
-    if (time > 99) {
-      time = 0;
-    }
-  }  
+  readRpm();
+
+  readTemp();
+
+  readPot();
+}
+
+void readRpm() {
   int state = digitalRead(READ_RPM_PIN);
   if (stateOld == LOW && state == HIGH) {
     half_revolutions++;
   }
   stateOld = state;
-  ct = millis();
-  boolean disp = false;
-  if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
-    disp = true;
+
+  if (millis() >= rpmTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
-    //Todo fix
-    rpm = 1000;
-
     half_revolutions = 0; // Restart the RPM counter
-    mcrMax = 0;
-    lcdTimeNext = millis() + 1000;
+    rpmTimeNext = millis() + RPM_PERIOD;
   }  
+}
 
+void readTemp() {
   if (millis() >= tempTimeNext) {
+    unsigned long m1 = micros();
     float tempC = sensors.getTempC(sensorAddress);
     sensors.requestTemperatures();
-    tempTimeNext = millis() + 100;
+    tempTimeNext = millis() + TEMP_PERIOD;
     tempInt = round(tempC);
-    Serial.print(tempC);
-    Serial.print(" ");
-    Serial.println(tempInt);
+    //Serial.print(tempC);
+    //Serial.print(" ");
+    Serial.println(micros() - m1);
     //TODO -127
   }
+}
 
-  int in, out;
-
-  ct = millis();
-  if (ct >= nextPotRead) {
-    nextPotRead = ct + 50;
-    in = analogRead(POT_PIN);
-    if ((in < previousPotValue - 5) ||
-      (in > previousPotValue + 5)) {
+void readPot() {
+  if (millis() >= potTimeNext) {
+    potTimeNext = millis() + POT_PERIOD;
+    int in = analogRead(POT_PIN);
+    if (in != previousPotValue) {
       previousPotValue = in;
       //Serial.println("pot: ");
       //Serial.println(in);
-      out = map(in, 0, 1023, 0, 79);
+      int out = map(in, 0, 1023, 0, 79);
       OCR2B = out;
     }
   }
-  unsigned long mcr = micros() - m1;
-  if (!disp && (mcr > mcrMax)) {
-    mcrMax = mcr;
-  }
+
 }
 
 void slavesRespond(){
@@ -143,4 +128,7 @@ void slavesRespond(){
   buffer[3] = rpm & 255;
   Wire.write(buffer, 4);          // return response to last command
 }
+
+
+
 
