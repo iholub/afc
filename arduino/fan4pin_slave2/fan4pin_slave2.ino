@@ -37,7 +37,7 @@ int previousPotValue = -1;
 
 void setup()
 {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
   // Fast PWM Mode, Prescaler = /8
@@ -86,6 +86,8 @@ void readRpm() {
   if (millis() >= rpmTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
+    //Serial.print("rpm: ");
+    //Serial.println(rpm);
     half_revolutions = 0; // Restart the RPM counter
     rpmTimeNext = millis() + RPM_PERIOD;
   }  
@@ -98,10 +100,8 @@ void readTemp() {
     sensors.requestTemperatures();
     tempTimeNext = millis() + TEMP_PERIOD;
     tempInt = round(tempC);
-    //Serial.print(tempC);
-    //Serial.print(" ");
-    Serial.println(micros() - m1);
-    //TODO -127
+    //Serial.print("t: ");
+    //Serial.print(tempInt);
   }
 }
 

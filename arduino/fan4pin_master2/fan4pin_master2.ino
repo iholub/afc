@@ -12,6 +12,9 @@
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
+#define RPM_PERIOD 1000
+#define TEMP_PERIOD 100
+#define POT_PERIOD 100
 #define TEMPERATURE_PRECISION 9
 #define I2C_FAN2_ADDR 0x31
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
@@ -20,7 +23,6 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 // arrays to hold device addresses
 DeviceAddress sensorAddress;
-int volatile tempInt = -127;
 
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 
@@ -34,22 +36,21 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I
 /*-----( Declare Variables )-----*/
 //NONE
 
-// read RPM
-volatile int half_revolutions = 0;
-int rpm = 0;
-unsigned long lcdTimeNext = 0;
+int volatile tempInt = -127;
 
-unsigned long nextPotRead = 0;
+#define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
+
+/*-----( Declare Variables )-----*/
+
+// read RPM
+int stateOld = LOW;
+int half_revolutions = 0;
+int volatile rpm = 0;
+unsigned long rpmTimeNext = 0;
+unsigned long potTimeNext = 0;
+unsigned long tempTimeNext;
 
 int previousPotValue = -1;
-
-int stateOld = LOW;
-boolean stateHigh = false;
-
-int time = 0;
-unsigned long timeNext = 0;
-
-unsigned long mcrMax = 0;
 
 int temp2 = -127;
 int rpm2 = -1;
@@ -70,8 +71,9 @@ void setup()
 
     lcd.begin(16,2);   // initialize the lcd for 16 chars 2 lines, turn on backlight
 
-  // Start up the library
+    // Start up the library
   sensors.begin();
+  sensors.setWaitForConversion(false);
 
   // Must be called before search()
   oneWire.reset_search();
@@ -80,78 +82,83 @@ void setup()
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
   }
 
+  sensors.requestTemperatures();
+  tempTimeNext = millis() + TEMP_PERIOD;
+
 }
 
 void loop()
 {
-  unsigned long m1 = micros();
-  unsigned long ct = millis();
-  if (ct >= timeNext) {
-    timeNext = ct + 300;
-    time++;
-    if (time > 99) {
-      time = 0;
-    }
-  }  
+  readRpm();
+
+  readTemp();
+
+  readPot();
+
+}
+
+void readRpm() {
   int state = digitalRead(READ_RPM_PIN);
   if (stateOld == LOW && state == HIGH) {
     half_revolutions++;
   }
   stateOld = state;
-  ct = millis();
-  boolean disp = false;
-  if (ct >= lcdTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
-    sensors.requestTemperatures();
-    //delay(500);
-    disp = true;
+
+  if (millis() >= rpmTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
-    float tempC = sensors.getTempC(sensorAddress);
-    tempInt = round(tempC);
-
-    readFan2();
+    half_revolutions = 0; // Restart the RPM counter
     
+    readFan2();
+
+    char buf[5];
     lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print(rpm);
-    lcd.setCursor(5,0);
-    lcd.print(tempInt);
-    lcd.setCursor(9,0);
-    lcd.print(mcrMax);
-
+    sprintf(buf, "%4d", rpm);
+    lcd.print(buf);
     lcd.setCursor(0,1);
-    lcd.print(rpm2);
+    sprintf(buf, "%4d", tempInt);
+    lcd.print(buf);
+    
+    lcd.setCursor(5,0);
+    sprintf(buf, "%4d", rpm2);
+    lcd.print(buf);
+
     lcd.setCursor(5,1);
-    lcd.print(temp2);
-
-    //Serial.print("RPM =\t"); //print the word "RPM" and tab.
-    //Serial.print(rpm); // print the rpm value.
-    //Serial.print("\t Hz=\t"); //print the word "Hz".
-    //Serial.println(half_revolutions); //print revolutions per second or Hz. And print new line or enter.
-    half_revolutions = 0; // Restart the RPM counter
-    mcrMax = 0;
-    lcdTimeNext = millis() + 1000;
+    sprintf(buf, "%4d", temp2);
+    lcd.print(buf);
+    
+    rpmTimeNext = millis() + RPM_PERIOD;
   }  
+}
 
-  int in, out;
+void readTemp() {
+  if (millis() >= tempTimeNext) {
+    unsigned long m1 = micros();
+    float tempC = sensors.getTempC(sensorAddress);
+    sensors.requestTemperatures();
+    tempTimeNext = millis() + TEMP_PERIOD;
+    tempInt = round(tempC);
+    //Serial.print(tempC);
+    //Serial.print(" ");
+    Serial.println(micros() - m1);
+    //TODO -127
+  }
+}
 
-  ct = millis();
-  if (ct >= nextPotRead) {
-    nextPotRead = ct + 50;
-    in = analogRead(POT_PIN);
-    if ((in < previousPotValue - 5) ||
-      (in > previousPotValue + 5)) {
+void readPot() {
+  if (millis() >= potTimeNext) {
+    potTimeNext = millis() + POT_PERIOD;
+    int in = analogRead(POT_PIN);
+    if (in != previousPotValue) {
       previousPotValue = in;
       //Serial.println("pot: ");
       //Serial.println(in);
-      out = map(in, 0, 1023, 0, 79);
+      int out = map(in, 0, 1023, 0, 79);
       OCR2B = out;
     }
   }
-  unsigned long mcr = micros() - m1;
-  if (!disp && (mcr > mcrMax)) {
-    mcrMax = mcr;
-  }
+
 }
 
 void readFan2() {
