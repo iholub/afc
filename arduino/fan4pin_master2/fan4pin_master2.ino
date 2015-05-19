@@ -57,7 +57,7 @@ int rpm2 = -1;
 
 void setup()
 {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
   // Fast PWM Mode, Prescaler = /8
@@ -128,6 +128,15 @@ void readRpm() {
     sprintf(buf, "%4d", temp2);
     lcd.print(buf);
     
+    lcd.setCursor(10,0);
+    sprintf(buf, "%4d", OCR2B);
+    lcd.print(buf);
+
+    lcd.setCursor(10,1);
+    sprintf(buf, "%4d", previousPotValue);
+    lcd.print(buf);
+    
+    
     rpmTimeNext = millis() + RPM_PERIOD;
   }  
 }
@@ -135,14 +144,23 @@ void readRpm() {
 void readTemp() {
   if (millis() >= tempTimeNext) {
     unsigned long m1 = micros();
+    //12.85 ms
     float tempC = sensors.getTempC(sensorAddress);
+    unsigned long m2 = micros();
+    //2.14 ms
     sensors.requestTemperatures();
+    unsigned long m3 = micros();
     tempTimeNext = millis() + TEMP_PERIOD;
     tempInt = round(tempC);
+    unsigned long m4 = micros();
     //Serial.print(tempC);
     //Serial.print(" ");
-    Serial.println(micros() - m1);
-    //TODO -127
+    Serial.print(m2 - m1);
+    Serial.print(" ");
+    Serial.print(m3 - m2);
+    Serial.print(" ");
+    Serial.print(m4 - m3);
+    Serial.println();
   }
 }
 
@@ -150,6 +168,12 @@ void readPot() {
   if (millis() >= potTimeNext) {
     potTimeNext = millis() + POT_PERIOD;
     int in = analogRead(POT_PIN);
+    if (in < 50) {
+      in = 0;
+    } else
+    if (in > 980) {
+      in = 1023;
+    }
     if (in != previousPotValue) {
       previousPotValue = in;
       //Serial.println("pot: ");
