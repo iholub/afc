@@ -28,11 +28,15 @@ int volatile tempInt = -127;
 // read RPM
 int stateOld = -1;
 int rpmInit = false;
-int half_revolutions = -1;
 int volatile rpm = -1;
 unsigned long rpmTimeStart;
 unsigned long potTimeNext = 0;
 unsigned long tempTimeNext;
+#define RPM_READ_COUNT 2
+unsigned long rpmTimeSum = 0;
+int revolutionsSum = 0;
+int revolutions;
+int currRpmRead;
 
 int previousPotValue = -1;
 
@@ -50,7 +54,7 @@ void setup()
   OCR2A = 79;   // TOP - DO NOT CHANGE, SETS PWM PULSE RATE
   OCR2B = 0;    // duty cycle for Pin 3 (0-79) generates 1 500nS pulse even when 0
 
-  Wire.begin(SLAVE_ADDR);
+    Wire.begin(SLAVE_ADDR);
   Wire.onRequest(slavesRespond);  // Perform on master's request
 
   // Start up the library
@@ -71,16 +75,27 @@ void loop()
   unsigned long currTime = millis();
   if (currTime >= tempTimeNext) {
     if (rpmInit) {
-      unsigned long spent = currTime - rpmTimeStart;
-      rpm = half_revolutions * 30000 / spent; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
+      rpmTimeSum += currTime - rpmTimeStart;
+      revolutionsSum += revolutions;
+      currRpmRead++;
+      if (currRpmRead == RPM_READ_COUNT) {
+        int rpmRes = revolutionsSum * 30000 / rpmTimeSum; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
+        rpm = rpmRes;
+
+        currRpmRead = 0;
+        rpmTimeSum = 0;
+        revolutionsSum = 0;
+      }
     }
-    
+
     readRequestTemp();
-    
+
     tempTimeNext = millis() + TEMP_PERIOD;
-    
+
     restartRpm();
-  } else {
+    rpmInit = true;
+  } 
+  else {
     if (rpmInit) {
       readRpm();
     }
@@ -90,24 +105,23 @@ void loop()
 }
 
 void restartRpm() {
-    rpmInit = true;
-    half_revolutions = 0;// Restart the RPM counter
-    stateOld = digitalRead(READ_RPM_PIN);
-    rpmTimeStart = millis();
+  revolutions = 0;// Restart the RPM counter
+  stateOld = digitalRead(READ_RPM_PIN);
+  rpmTimeStart = millis();
 }
 
 void readRpm() {
   int state = digitalRead(READ_RPM_PIN);
   if (state != stateOld) {
-    half_revolutions++;
+    revolutions++;
   }
   stateOld = state;
 }
 
 void readRequestTemp() {
-    float tempC = sensors.getTempC(sensorAddress);
-    tempInt = round(tempC);
-    sensors.requestTemperatures();
+  float tempC = sensors.getTempC(sensorAddress);
+  tempInt = round(tempC);
+  sensors.requestTemperatures();
 }
 
 void readPot() {
@@ -133,6 +147,7 @@ void slavesRespond(){
   buffer[3] = rpm & 255;
   Wire.write(buffer, 4);          // return response to last command
 }
+
 
 
 
