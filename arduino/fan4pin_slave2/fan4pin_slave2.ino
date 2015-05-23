@@ -7,8 +7,8 @@
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
-#define RPM_PERIOD 1000
-#define TEMP_PERIOD 100
+#define TEMP_PERIOD 500
+#define TEMP_PERIOD_SETUP 100
 #define POT_PERIOD 100
 #define SLAVE_ADDR 0x31
 #define TEMPERATURE_PRECISION 9
@@ -26,10 +26,11 @@ int volatile tempInt = -127;
 /*-----( Declare Variables )-----*/
 
 // read RPM
-int stateOld = LOW;
-int half_revolutions = 0;
-int volatile rpm = 0;
-unsigned long rpmTimeNext = 0;
+int stateOld = -1;
+int rpmInit = false;
+int half_revolutions = -1;
+int volatile rpm = -1;
+unsigned long rpmTimeStart;
 unsigned long potTimeNext = 0;
 unsigned long tempTimeNext;
 
@@ -49,60 +50,64 @@ void setup()
   OCR2A = 79;   // TOP - DO NOT CHANGE, SETS PWM PULSE RATE
   OCR2B = 0;    // duty cycle for Pin 3 (0-79) generates 1 500nS pulse even when 0
 
-    // Start up the library
+  Wire.begin(SLAVE_ADDR);
+  Wire.onRequest(slavesRespond);  // Perform on master's request
+
+  // Start up the library
   sensors.begin();
   sensors.setWaitForConversion(false);
 
   // Must be called before search()
   oneWire.reset_search();
-
   if (oneWire.search(sensorAddress)) {
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
   }
-
   sensors.requestTemperatures();
-  tempTimeNext = millis() + TEMP_PERIOD;
-
-  Wire.begin(SLAVE_ADDR);
-  Wire.onRequest(slavesRespond);  // Perform on master's request
+  tempTimeNext = millis() + TEMP_PERIOD_SETUP;
 }
 
 void loop()
 {
-  readRpm();
-
-  readTemp();
+  unsigned long currTime = millis();
+  if (currTime >= tempTimeNext) {
+    if (rpmInit) {
+      unsigned long spent = currTime - rpmTimeStart;
+      rpm = half_revolutions * 30000 / spent; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
+    }
+    
+    readRequestTemp();
+    
+    tempTimeNext = millis() + TEMP_PERIOD;
+    
+    restartRpm();
+  } else {
+    if (rpmInit) {
+      readRpm();
+    }
+  }
 
   readPot();
 }
 
+void restartRpm() {
+    rpmInit = true;
+    half_revolutions = 0;// Restart the RPM counter
+    stateOld = digitalRead(READ_RPM_PIN);
+    rpmTimeStart = millis();
+}
+
 void readRpm() {
   int state = digitalRead(READ_RPM_PIN);
-  if (stateOld == LOW && state == HIGH) {
+  if (state != stateOld) {
     half_revolutions++;
   }
   stateOld = state;
-
-  if (millis() >= rpmTimeNext){ //Uptade every one second, this will be equal to reading frecuency (Hz).
-    rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
-
-    //Serial.print("rpm: ");
-    //Serial.println(rpm);
-    half_revolutions = 0; // Restart the RPM counter
-    rpmTimeNext = millis() + RPM_PERIOD;
-  }  
 }
 
-void readTemp() {
-  if (millis() >= tempTimeNext) {
-    unsigned long m1 = micros();
+void readRequestTemp() {
     float tempC = sensors.getTempC(sensorAddress);
-    sensors.requestTemperatures();
-    tempTimeNext = millis() + TEMP_PERIOD;
     tempInt = round(tempC);
-    //Serial.print("t: ");
-    //Serial.print(tempInt);
-  }
+    sensors.requestTemperatures();
 }
 
 void readPot() {
