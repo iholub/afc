@@ -7,7 +7,7 @@
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
-#define TEMP_PERIOD 500
+#define TEMP_PERIOD 250
 #define TEMP_PERIOD_SETUP 100
 #define POT_PERIOD 100
 #define SLAVE_ADDR 0x31
@@ -26,17 +26,17 @@ int volatile tempInt = -127;
 /*-----( Declare Variables )-----*/
 
 // read RPM
-int stateOld = -1;
+int stateOld;
 int rpmInit = false;
 int volatile rpm = -1;
 unsigned long rpmTimeStart;
 unsigned long potTimeNext = 0;
 unsigned long tempTimeNext;
-#define RPM_READ_COUNT 2
+#define RPM_READ_COUNT 4
 unsigned long rpmTimeSum = 0;
 int revolutionsSum = 0;
 int revolutions;
-int currRpmRead;
+int currRpmRead = 0;
 
 int previousPotValue = -1;
 
@@ -79,8 +79,12 @@ void loop()
       revolutionsSum += revolutions;
       currRpmRead++;
       if (currRpmRead == RPM_READ_COUNT) {
-        int rpmRes = revolutionsSum * 30000 / rpmTimeSum; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
-        rpm = rpmRes;
+        // revolutions / 2 / 2 * 60000 / rpmTimeSum
+        unsigned long res = revolutionsSum * 15000l / rpmTimeSum;
+        //Serial.print(revolutionsSum);
+        //Serial.print(" ");
+        //Serial.println(rpmTimeSum);
+        rpm = res;
 
         currRpmRead = 0;
         rpmTimeSum = 0;
@@ -126,8 +130,15 @@ void readRequestTemp() {
 
 void readPot() {
   if (millis() >= potTimeNext) {
+    //unsigned long m1 = micros();
     potTimeNext = millis() + POT_PERIOD;
     int in = analogRead(POT_PIN);
+    if (in < 50) {
+      in = 0;
+    } else
+    if (in > 970) {
+      in = 1023;
+    }
     if (in != previousPotValue) {
       previousPotValue = in;
       //Serial.println("pot: ");
@@ -135,6 +146,7 @@ void readPot() {
       int out = map(in, 0, 1023, 0, 79);
       OCR2B = out;
     }
+    //Serial.println(micros() - m1);
   }
 
 }
