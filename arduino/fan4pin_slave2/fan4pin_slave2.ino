@@ -3,6 +3,7 @@
 //temperature
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <PID_v1.h>
 #define ONE_WIRE_BUS 7
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
@@ -38,11 +39,17 @@ int revolutionsSum = 0;
 int revolutions;
 int currRpmRead = 0;
 
-int previousPotValue = -1;
+int potValue;
+
+//Setup PID
+double Setpoint, Input, Output; //I/O for PID
+double aggKp=40, aggKi=2, aggKd=10;//original: aggKp=4, aggKi=0.2, aggKd=1, Aggressive Turning,50,20,20
+double consKp=20, consKi=1, consKd=5; //original consKp=1, consKi=0.05, consKd=0.25, Conservative Turning,20,10,10
+PID myPID(&Input, &Output, &Setpoint, consKp, consKi, consKd, REVERSE);  //Initialize PID
 
 void setup()
 {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
   // Fast PWM Mode, Prescaler = /8
@@ -67,6 +74,13 @@ void setup()
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
   }
   sensors.requestTemperatures();
+
+  potValue = analogRead(POT_PIN);
+  potToTemp();
+
+  //PID Setup
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetSampleTime(TEMP_PERIOD);
   tempTimeNext = millis() + TEMP_PERIOD_SETUP;
 }
 
@@ -92,7 +106,35 @@ void loop()
       }
     }
 
-    readRequestTemp();
+    Input = sensors.getTempC(sensorAddress);
+    tempInt = round(Input);
+    sensors.requestTemperatures();
+
+    //Compute PID value
+    double gap = Setpoint-Input; //distance away from setpoint
+//    if(gap<1)
+//    {  
+      //Close to Setpoint, be conservative
+//      myPID.SetTunings(consKp, consKi, consKd);
+//    }
+//    else
+//    {
+//      //Far from Setpoint, be aggresive
+//      myPID.SetTunings(aggKp, aggKi, aggKd);
+//    } 
+    myPID.Compute();
+    
+    int out = map(Output, 0, 255, 0, 79);
+    OCR2B = out;
+
+    Serial.print(Setpoint);
+    Serial.print(" ");
+    Serial.print(gap);
+    Serial.print(" ");
+    Serial.print(Output);
+    Serial.print(" ");
+    Serial.print(out);
+    Serial.println(" ");
 
     tempTimeNext = millis() + TEMP_PERIOD;
 
@@ -105,7 +147,11 @@ void loop()
     }
   }
 
-  readPot();
+  if (millis() >= potTimeNext) {
+    readPot();
+    potToTemp();
+    potTimeNext = millis() + POT_PERIOD;
+  }
 }
 
 void restartRpm() {
@@ -122,33 +168,27 @@ void readRpm() {
   stateOld = state;
 }
 
-void readRequestTemp() {
-  float tempC = sensors.getTempC(sensorAddress);
-  tempInt = round(tempC);
-  sensors.requestTemperatures();
-}
-
-void readPot() {
-  if (millis() >= potTimeNext) {
-    //unsigned long m1 = micros();
-    potTimeNext = millis() + POT_PERIOD;
-    int in = analogRead(POT_PIN);
-    if (in < 50) {
-      in = 0;
-    } else
+void potToTemp() {
+  int in = potValue;
+  if (in < 50) {
+    in = 0;
+  } 
+  else
     if (in > 970) {
       in = 1023;
     }
-    if (in != previousPotValue) {
-      previousPotValue = in;
-      //Serial.println("pot: ");
-      //Serial.println(in);
-      int out = map(in, 0, 1023, 0, 79);
-      OCR2B = out;
-    }
-    //Serial.println(micros() - m1);
-  }
+  Setpoint = map(in, 0, 1023, -55, 125);
+}
 
+void readPot() {
+  //unsigned long m1 = micros();
+  int in = analogRead(POT_PIN);
+  if ((in < potValue - 3) || (in > potValue + 3)) {
+    potValue = in;
+    //Serial.println("pot: ");
+    //Serial.println(in);
+  }
+  //Serial.println(micros() - m1);
 }
 
 void slavesRespond(){
@@ -159,6 +199,7 @@ void slavesRespond(){
   buffer[3] = rpm & 255;
   Wire.write(buffer, 4);          // return response to last command
 }
+
 
 
 
