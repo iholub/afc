@@ -9,7 +9,6 @@
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
 #define TEMP_PERIOD 250
-#define TEMP_PERIOD_SETUP 100
 #define POT_PERIOD 100
 #define SLAVE_ADDR 0x31
 #define TEMPERATURE_PRECISION 9
@@ -31,8 +30,8 @@ int stateOld;
 int rpmInit = false;
 int volatile rpm = -1;
 unsigned long rpmTimeStart;
-unsigned long potTimeNext = 0;
-unsigned long tempTimeNext;
+unsigned long previousPotTime;
+unsigned long previousTempTime;
 #define RPM_READ_COUNT 4
 unsigned long rpmTimeSum = 0;
 int revolutionsSum = 0;
@@ -40,12 +39,14 @@ int revolutions;
 int currRpmRead = 0;
 
 int potValue;
+int volatile setpointTemp = -127;
+byte volatile fanSpeedPercentage = 255;
 
 //Setup PID
-double Setpoint, Input, Output; //I/O for PID
-double aggKp=40, aggKi=2, aggKd=10;//original: aggKp=4, aggKi=0.2, aggKd=1, Aggressive Turning,50,20,20
-double consKp=20, consKi=1, consKd=5; //original consKp=1, consKi=0.05, consKd=0.25, Conservative Turning,20,10,10
-PID myPID(&Input, &Output, &Setpoint, consKp, consKi, consKd, REVERSE);  //Initialize PID
+double Setpoint;
+double Input;
+double Output;
+PID myPID(&Input, &Output, &Setpoint, 20, 1, 5, REVERSE);  //Initialize PID
 
 void setup()
 {
@@ -81,13 +82,15 @@ void setup()
   //PID Setup
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(TEMP_PERIOD);
-  tempTimeNext = millis() + TEMP_PERIOD_SETUP;
+  previousTempTime = previousPotTime = millis();
 }
 
 void loop()
 {
   unsigned long currTime = millis();
-  if (currTime >= tempTimeNext) {
+  unsigned long timeDiff = currTime - previousTempTime;
+  if (timeDiff >= TEMP_PERIOD) {
+    previousTempTime = currTime;
     if (rpmInit) {
       rpmTimeSum += currTime - rpmTimeStart;
       revolutionsSum += revolutions;
@@ -111,32 +114,11 @@ void loop()
     sensors.requestTemperatures();
 
     //Compute PID value
-    double gap = Setpoint-Input; //distance away from setpoint
-//    if(gap<1)
-//    {  
-      //Close to Setpoint, be conservative
-//      myPID.SetTunings(consKp, consKi, consKd);
-//    }
-//    else
-//    {
-//      //Far from Setpoint, be aggresive
-//      myPID.SetTunings(aggKp, aggKi, aggKd);
-//    } 
     myPID.Compute();
-    
+
     int out = map(Output, 0, 255, 0, 79);
     OCR2B = out;
-
-    Serial.print(Setpoint);
-    Serial.print(" ");
-    Serial.print(gap);
-    Serial.print(" ");
-    Serial.print(Output);
-    Serial.print(" ");
-    Serial.print(out);
-    Serial.println(" ");
-
-    tempTimeNext = millis() + TEMP_PERIOD;
+    fanSpeedPercentage = map(out, 0, 79, 0, 100);
 
     restartRpm();
     rpmInit = true;
@@ -147,10 +129,12 @@ void loop()
     }
   }
 
-  if (millis() >= potTimeNext) {
+  currTime = millis();
+  timeDiff = currTime - previousPotTime;
+  if (timeDiff >= POT_PERIOD) {
+    previousPotTime = currTime;
     readPot();
     potToTemp();
-    potTimeNext = millis() + POT_PERIOD;
   }
 }
 
@@ -173,32 +157,33 @@ void potToTemp() {
   if (in < 50) {
     in = 0;
   } 
-  else
-    if (in > 970) {
-      in = 1023;
-    }
-  Setpoint = map(in, 0, 1023, -55, 125);
+  else if (in > 970) {
+    in = 1023;
+  }
+  setpointTemp = map(in, 0, 1023, -1, 125);
+  Setpoint = setpointTemp;
 }
 
 void readPot() {
-  //unsigned long m1 = micros();
   int in = analogRead(POT_PIN);
   if ((in < potValue - 3) || (in > potValue + 3)) {
     potValue = in;
-    //Serial.println("pot: ");
-    //Serial.println(in);
   }
-  //Serial.println(micros() - m1);
 }
 
 void slavesRespond(){
-  byte buffer[4];                 // split int value into two bytes buffer
+  byte buffer[7];                 // split int value into two bytes buffer
   buffer[0] = tempInt >> 8;
   buffer[1] = tempInt & 255;
   buffer[2] = rpm >> 8;
   buffer[3] = rpm & 255;
-  Wire.write(buffer, 4);          // return response to last command
+  buffer[4] = setpointTemp >> 8;
+  buffer[5] = setpointTemp & 255;
+  buffer[6] = fanSpeedPercentage;
+  Wire.write(buffer, 7);          // return response to last command
 }
+
+
 
 
 
