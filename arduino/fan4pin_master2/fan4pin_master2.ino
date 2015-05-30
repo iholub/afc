@@ -54,6 +54,11 @@ int previousPotValue = -1;
 
 int temp2 = -127;
 int rpm2 = -1;
+int setpointTemp2 = -1; 
+byte fanSpeedPercentage2 = 255;
+
+int volatile setpointTemp = -127;
+byte volatile fanSpeedPercentage = 255;
 
 void setup()
 {
@@ -111,56 +116,66 @@ void readRpm() {
     
     readFan2();
 
-    char buf[5];
-    lcd.clear();
-    lcd.setCursor(0,0);
-    sprintf(buf, "%4d", rpm);
-    lcd.print(buf);
-    lcd.setCursor(0,1);
-    sprintf(buf, "%4d", tempInt);
-    lcd.print(buf);
-    
-    lcd.setCursor(5,0);
-    sprintf(buf, "%4d", rpm2);
-    lcd.print(buf);
-
-    lcd.setCursor(5,1);
-    sprintf(buf, "%4d", temp2);
-    lcd.print(buf);
-    
-    lcd.setCursor(10,0);
-    sprintf(buf, "%4d", OCR2B);
-    lcd.print(buf);
-
-    lcd.setCursor(10,1);
-    sprintf(buf, "%4d", previousPotValue);
-    lcd.print(buf);
-    
-    
-    rpmTimeNext = millis() + RPM_PERIOD;
-  }  
-}
-
-void readTemp() {
-  if (millis() >= tempTimeNext) {
+    // 33 ms
     unsigned long m1 = micros();
-    //12.85 ms
-    float tempC = sensors.getTempC(sensorAddress);
+    //lcd.clear();
+    lcd.setCursor(0,0);
     unsigned long m2 = micros();
-    //2.14 ms
-    sensors.requestTemperatures();
+    //String tempStr = tempToStr(tempInt);
+    int tempZ = tempInt;
+    if (tempZ == -127) {
+      tempZ = -99;
+    }
     unsigned long m3 = micros();
-    tempTimeNext = millis() + TEMP_PERIOD;
-    tempInt = round(tempC);
+    char buf[17];
+    sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm, setpointTemp, fanSpeedPercentage);
     unsigned long m4 = micros();
-    //Serial.print(tempC);
-    //Serial.print(" ");
+    lcd.print(buf);
+    unsigned long m5 = micros();
+    
+    lcd.setCursor(0,1);
+    //tempStr = tempToStr(temp2);
+    tempZ = temp2;
+    if (tempZ == -127) {
+      tempZ = -99;
+    }
+    sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm2, setpointTemp2, fanSpeedPercentage2);
+    lcd.print(buf);
     Serial.print(m2 - m1);
     Serial.print(" ");
     Serial.print(m3 - m2);
     Serial.print(" ");
     Serial.print(m4 - m3);
-    Serial.println();
+    Serial.print(" ");
+    Serial.print(m5 - m4);
+    Serial.print(" ");
+    Serial.println(micros() - m1);
+    
+    rpmTimeNext = millis() + RPM_PERIOD;
+  }  
+}
+
+String tempToStr(int temp) {
+  String s;
+  if (temp == - 127) {
+    s = "ERR";
+  } else {
+    char buf[4];
+    sprintf(buf, "%s", temp);
+    s = String(buf);
+  }
+  return s;
+}
+
+void readTemp() {
+  if (millis() >= tempTimeNext) {
+    //12.85 ms
+    float tempC = sensors.getTempC(sensorAddress);
+    //2.14 ms
+    sensors.requestTemperatures();
+    tempTimeNext = millis() + TEMP_PERIOD;
+    tempInt = round(tempC);
+    unsigned long m4 = micros();
   }
 }
 
@@ -186,12 +201,14 @@ void readPot() {
 }
 
 void readFan2() {
-  byte buf [4];
+  byte buf [7];
 
-  if (Wire.requestFrom(I2C_FAN2_ADDR, 4))  // if request succeeded
+  if (Wire.requestFrom(I2C_FAN2_ADDR, 7))  // if request succeeded
     {
       temp2 = Wire.read() << 8 | Wire.read();
       rpm2 = Wire.read() << 8 | Wire.read();
+      setpointTemp2 = Wire.read() << 8 | Wire.read();
+      fanSpeedPercentage2 = Wire.read();
     }
   else
     {
