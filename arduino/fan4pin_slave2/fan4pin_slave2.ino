@@ -2,13 +2,13 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <PID_v1.h>
-#define ONE_WIRE_BUS 7
-#define READ_RPM_PIN 5
-#define PWM_PIN 3
-#define POT_PIN A0
-#define TEMP_PERIOD 250
-#define POT_PERIOD 100
-#define TEMPERATURE_PRECISION 9
+#define ONE_WIRE_BUS 7 // pin connected to DS18B20 temperature sensor
+#define READ_RPM_PIN 5 // pin connected to fan rpm wire (usually green)
+#define PWM_PIN 3 // pin connected to fan control pin (usually blue)
+#define POT_PIN A0 // pin to read potentiometer
+#define TEMP_PERIOD 250 // period in milliseconds between temperature measurements
+#define POT_PERIOD 100 // period in milliseconds between potentiometer measurements
+#define TEMPERATURE_PRECISION 9 
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 
@@ -16,11 +16,21 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 DeviceAddress sensorAddress;
 
-int volatile tempInt = -127;
-// read RPM
-int stateOld;
+#define SETPOINT_TEMP_MIN -5 // bottom bound for setpoint temperature
+#define SETPOINT_TEMP_MAX 125 // top bound for setpoint temperature
+
+#define TEMP_ERROR -127
+#define RPM_ERROR -1
+#define PERCENTAGE_ERROR 255
+
+//TODO is volatile required?
+int volatile tempInt = TEMP_ERROR;
+int volatile rpm = RPM_ERROR;
+int volatile setpointTemp = TEMP_ERROR;
+byte volatile fanSpeedPercentage = PERCENTAGE_ERROR;
+
+int rpmPinStateOld;
 int rpmInit = false;
-int volatile rpm = -1;
 unsigned long rpmTimeStart;
 unsigned long previousPotTime;
 unsigned long previousTempTime;
@@ -31,18 +41,15 @@ int revolutions;
 int currRpmRead = 0;
 
 int potValue;
-int volatile setpointTemp = -127;
-byte volatile fanSpeedPercentage = 255;
 
-//Setup PID
-double Setpoint;
-double Input;
-double Output;
-PID myPID(&Input, &Output, &Setpoint, 20, 1, 5, REVERSE);
+double pidSetpoint;
+double pidInput;
+double pidOutput;
+PID myPID(&pidInput, &pidOutput, &pidSetpoint, 20, 1, 5, REVERSE);
 
 void setup()
 {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
  
@@ -83,11 +90,8 @@ void loop()
       revolutionsSum += revolutions;
       currRpmRead++;
       if (currRpmRead == RPM_READ_COUNT) {
-        // revolutions / 2 / 2 * 60000 / rpmTimeSum
+        // rpm is revolutionsSum / 2 / 2 * 60000 / rpmTimeSum
         unsigned long res = revolutionsSum * 15000l / rpmTimeSum;
-        //Serial.print(revolutionsSum);
-        //Serial.print(" ");
-        //Serial.println(rpmTimeSum);
         rpm = res;
 
         currRpmRead = 0;
@@ -96,15 +100,16 @@ void loop()
       }
     }
 
-    Input = sensors.getTempC(sensorAddress);
-    tempInt = round(Input);
+    pidInput = sensors.getTempC(sensorAddress);
+    tempInt = round(pidInput);
     sensors.requestTemperatures();
 
-    //Compute PID value
     myPID.Compute();
 
-    int out = map(Output, 0, 255, 0, 79);
+    // pid value is from 0 to 255, OCR2B value should be from 0 to 79
+    int out = map(pidOutput, 0, 255, 0, 79);
     OCR2B = out;
+    // fan speed in percent from 0% to 100%
     fanSpeedPercentage = map(out, 0, 79, 0, 100);
 
     restartRpm();
@@ -126,40 +131,43 @@ void loop()
 }
 
 void restartRpm() {
-  revolutions = 0;// Restart the RPM counter
-  stateOld = digitalRead(READ_RPM_PIN);
+  revolutions = 0;
+  rpmPinStateOld = digitalRead(READ_RPM_PIN);
   rpmTimeStart = millis();
 }
 
 void readRpm() {
   int state = digitalRead(READ_RPM_PIN);
-  if (state != stateOld) {
+  if (state != rpmPinStateOld) {
     revolutions++;
   }
-  stateOld = state;
+  rpmPinStateOld = state;
 }
 
 void potToTemp() {
   int in = potValue;
+  // treat values below 50 as 0 (min)
   if (in < 50) {
     in = 0;
   } 
+  // treat values above 970 as 1023 (max)
   else if (in > 970) {
     in = 1023;
   }
-  setpointTemp = map(in, 0, 1023, -1, 125);
-  Setpoint = setpointTemp;
+  setpointTemp = map(in, 0, 1023, SETPOINT_TEMP_MIN, SETPOINT_TEMP_MAX);
+  pidSetpoint = setpointTemp;
 }
 
 void readPot() {
   int in = analogRead(POT_PIN);
+  // the value of analogRead is not stable
   if ((in < potValue - 3) || (in > potValue + 3)) {
     potValue = in;
   }
 }
 
-void slavesRespond(){
-  byte buffer[7];                 // split int value into two bytes buffer
+void slavesRespond() {
+  byte buffer[7];
   buffer[0] = tempInt >> 8;
   buffer[1] = tempInt & 255;
   buffer[2] = rpm >> 8;
@@ -167,7 +175,7 @@ void slavesRespond(){
   buffer[4] = setpointTemp >> 8;
   buffer[5] = setpointTemp & 255;
   buffer[6] = fanSpeedPercentage;
-  Wire.write(buffer, 7);          // return response to last command
+  Wire.write(buffer, 7);
 }
 
 
