@@ -8,7 +8,11 @@
 #define POT_PIN A0 // pin to read potentiometer
 #define TEMP_PERIOD 250 // period in milliseconds between temperature measurements
 #define POT_PERIOD 100 // period in milliseconds between potentiometer measurements
-#define TEMPERATURE_PRECISION 9 
+#define TEMPERATURE_PRECISION 9 // accuracy of DS18B20 sensor,
+// resolution 9 requires 94 ms delay between requestTemeratures() and getTempC(),
+// 10 - 188 ms,
+// 11 - 375 ms
+// 12 - 750 ms, according to DallasTemperature.cpp
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 
@@ -52,13 +56,13 @@ void setup()
   //Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
- 
+
   // Configure PWM 25Khz on pin 3
   TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
   TCCR2B = _BV(WGM22) | _BV(CS21);
   OCR2A = 79;
   OCR2B = 0;
-  
+
   Wire.begin(SLAVE_ADDR);
   Wire.onRequest(slavesRespond);
 
@@ -177,6 +181,7 @@ void slavesRespond() {
   buffer[6] = fanSpeedPercentage;
   Wire.write(buffer, 7);
 }
+
 
 
 
