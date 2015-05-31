@@ -90,6 +90,7 @@ void setup()
   sensors.requestTemperatures();
   tempTimeNext = millis() + TEMP_PERIOD;
 
+  lcd.clear();
   displayFans();
 }
 
@@ -201,9 +202,8 @@ void readPot() {
 }
 
 void readFan2() {
-  byte buf [7];
-
-  if (Wire.requestFrom(I2C_FAN2_ADDR, 7))  // if request succeeded
+  int res = Wire.requestFrom(I2C_FAN2_ADDR, 7);
+  if (res)  // if request succeeded
   {
     temp2 = Wire.read() << 8 | Wire.read();
     rpm2 = Wire.read() << 8 | Wire.read();
