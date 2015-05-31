@@ -1,30 +1,22 @@
-/*-----( Import needed libraries )-----*/
-#include <Wire.h>  // Comes with Arduino IDE
-//temperature
+#include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <PID_v1.h>
 #define ONE_WIRE_BUS 7
 #define READ_RPM_PIN 5
-#define PWM_PIN 3 // Only works with Pin 3
-#define POT_PIN A0 // Analog 0
+#define PWM_PIN 3
+#define POT_PIN A0
 #define TEMP_PERIOD 250
 #define POT_PERIOD 100
-#define SLAVE_ADDR 0x31
 #define TEMPERATURE_PRECISION 9
-// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+#define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
+#define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
+
 OneWire oneWire(ONE_WIRE_BUS);
-// Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&oneWire);
-// arrays to hold device addresses
 DeviceAddress sensorAddress;
 
 int volatile tempInt = -127;
-
-#define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
-
-/*-----( Declare Variables )-----*/
-
 // read RPM
 int stateOld;
 int rpmInit = false;
@@ -46,30 +38,26 @@ byte volatile fanSpeedPercentage = 255;
 double Setpoint;
 double Input;
 double Output;
-PID myPID(&Input, &Output, &Setpoint, 20, 1, 5, REVERSE);  //Initialize PID
+PID myPID(&Input, &Output, &Setpoint, 20, 1, 5, REVERSE);
 
 void setup()
 {
   Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
-  // Fast PWM Mode, Prescaler = /8
-  // PWM on Pin 3, Pin 11 disabled
-  // 16Mhz / 8 / (79 + 1) = 25Khz
+ 
+  // Configure PWM 25Khz on pin 3
   TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
   TCCR2B = _BV(WGM22) | _BV(CS21);
-  // Set TOP and initialize duty cycle to zero(0)
-  OCR2A = 79;   // TOP - DO NOT CHANGE, SETS PWM PULSE RATE
-  OCR2B = 0;    // duty cycle for Pin 3 (0-79) generates 1 500nS pulse even when 0
+  OCR2A = 79;
+  OCR2B = 0;
+  
+  Wire.begin(SLAVE_ADDR);
+  Wire.onRequest(slavesRespond);
 
-    Wire.begin(SLAVE_ADDR);
-  Wire.onRequest(slavesRespond);  // Perform on master's request
-
-  // Start up the library
   sensors.begin();
   sensors.setWaitForConversion(false);
 
-  // Must be called before search()
   oneWire.reset_search();
   if (oneWire.search(sensorAddress)) {
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
@@ -79,7 +67,6 @@ void setup()
   potValue = analogRead(POT_PIN);
   potToTemp();
 
-  //PID Setup
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(TEMP_PERIOD);
   previousTempTime = previousPotTime = millis();
