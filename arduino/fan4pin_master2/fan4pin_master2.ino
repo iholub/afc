@@ -116,32 +116,48 @@ void readRpm() {
     
     readFan2();
 
+    displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
+displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+    
+ //   lcd.setCursor(0,1);
+    //tempStr = tempToStr(temp2);
+   // int tempZ = temp2;
+    //if (tempZ == -127) {
+    //  tempZ = -99;
+    //}
+    //char buf[17];
+    //sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm2, setpointTemp2, fanSpeedPercentage2);
+    //lcd.print(buf);
+    
+    rpmTimeNext = millis() + RPM_PERIOD;
+  }  
+}
+
+void displayFan(int row, int temp, int rpm, int setpoint, int percentage) {
     // 33 ms
     unsigned long m1 = micros();
+
+  char buf[17];
+    //1 ms
+  lcd.setCursor(0,row);
     //lcd.clear();
-    lcd.setCursor(0,0);
     unsigned long m2 = micros();
     //String tempStr = tempToStr(tempInt);
-    int tempZ = tempInt;
-    if (tempZ == -127) {
-      tempZ = -99;
+    if (temp == -127) {
+      char tempBuf[4] = "ERR";
+      strncpy(buf, tempBuf, 3);
+    } else {
+      sprintf(buf, "%3d", temp);
     }
     unsigned long m3 = micros();
-    char buf[17];
-    sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm, setpointTemp, fanSpeedPercentage);
+    sprintf(&buf[3], "%5d", rpm);
+    // 0.24 ms
+    //sprintf(buf, "%3d%5d%4d%4d", );
     unsigned long m4 = micros();
+    // 15.3 ms
     lcd.print(buf);
     unsigned long m5 = micros();
-    
-    lcd.setCursor(0,1);
-    //tempStr = tempToStr(temp2);
-    tempZ = temp2;
-    if (tempZ == -127) {
-      tempZ = -99;
-    }
-    sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm2, setpointTemp2, fanSpeedPercentage2);
-    lcd.print(buf);
-    Serial.print(m2 - m1);
+   Serial.print(m2 - m1);
     Serial.print(" ");
     Serial.print(m3 - m2);
     Serial.print(" ");
@@ -150,21 +166,6 @@ void readRpm() {
     Serial.print(m5 - m4);
     Serial.print(" ");
     Serial.println(micros() - m1);
-    
-    rpmTimeNext = millis() + RPM_PERIOD;
-  }  
-}
-
-String tempToStr(int temp) {
-  String s;
-  if (temp == - 127) {
-    s = "ERR";
-  } else {
-    char buf[4];
-    sprintf(buf, "%s", temp);
-    s = String(buf);
-  }
-  return s;
 }
 
 void readTemp() {
