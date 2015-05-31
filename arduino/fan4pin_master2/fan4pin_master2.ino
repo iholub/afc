@@ -12,7 +12,7 @@
 #define READ_RPM_PIN 5
 #define PWM_PIN 3 // Only works with Pin 3
 #define POT_PIN A0 // Analog 0
-#define RPM_PERIOD 1000
+#define RPM_PERIOD 250
 #define TEMP_PERIOD 100
 #define POT_PERIOD 100
 #define TEMPERATURE_PRECISION 9
@@ -45,7 +45,7 @@ int volatile tempInt = -127;
 // read RPM
 int stateOld = LOW;
 int half_revolutions = 0;
-int volatile rpm = 0;
+int volatile rpm = -1;
 unsigned long rpmTimeNext = 0;
 unsigned long potTimeNext = 0;
 unsigned long tempTimeNext;
@@ -54,7 +54,7 @@ int previousPotValue = -1;
 
 int temp2 = -127;
 int rpm2 = -1;
-int setpointTemp2 = -1; 
+int setpointTemp2 = -127; 
 byte fanSpeedPercentage2 = 255;
 
 int volatile setpointTemp = -127;
@@ -76,7 +76,7 @@ void setup()
 
     lcd.begin(16,2);   // initialize the lcd for 16 chars 2 lines, turn on backlight
 
-    // Start up the library
+  // Start up the library
   sensors.begin();
   sensors.setWaitForConversion(false);
 
@@ -90,6 +90,7 @@ void setup()
   sensors.requestTemperatures();
   tempTimeNext = millis() + TEMP_PERIOD;
 
+  displayFans();
 }
 
 void loop()
@@ -113,59 +114,56 @@ void readRpm() {
     rpm = half_revolutions * 30; // Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use half_revolutions * 30.
 
     half_revolutions = 0; // Restart the RPM counter
-    
+
     readFan2();
 
-    displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
-displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
-    
- //   lcd.setCursor(0,1);
-    //tempStr = tempToStr(temp2);
-   // int tempZ = temp2;
-    //if (tempZ == -127) {
-    //  tempZ = -99;
-    //}
-    //char buf[17];
-    //sprintf(buf, "%3d%5d%4d%4d", tempZ, rpm2, setpointTemp2, fanSpeedPercentage2);
-    //lcd.print(buf);
-    
+    displayFans();
+
     rpmTimeNext = millis() + RPM_PERIOD;
   }  
 }
 
-void displayFan(int row, int temp, int rpm, int setpoint, int percentage) {
-    // 33 ms
-    unsigned long m1 = micros();
+void displayFans() {
+  displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
+  displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+}
 
+void displayFan(int row, int temp, int rpm, int setpoint, int percentage) {
+  // 16.5 ms
   char buf[17];
-    //1 ms
-  lcd.setCursor(0,row);
-    //lcd.clear();
-    unsigned long m2 = micros();
-    //String tempStr = tempToStr(tempInt);
-    if (temp == -127) {
-      char tempBuf[4] = "ERR";
-      strncpy(buf, tempBuf, 3);
-    } else {
-      sprintf(buf, "%3d", temp);
-    }
-    unsigned long m3 = micros();
+  buf[16] = 0;
+  if (temp == -127) {
+    strncpy(buf, "ERR", 3);
+  } 
+  else {
+    sprintf(buf, "%3d", temp);
+  }
+
+  if (rpm == -1) {
+    strncpy(&buf[3], "  ERR", 5);
+  } 
+  else {
     sprintf(&buf[3], "%5d", rpm);
-    // 0.24 ms
-    //sprintf(buf, "%3d%5d%4d%4d", );
-    unsigned long m4 = micros();
-    // 15.3 ms
-    lcd.print(buf);
-    unsigned long m5 = micros();
-   Serial.print(m2 - m1);
-    Serial.print(" ");
-    Serial.print(m3 - m2);
-    Serial.print(" ");
-    Serial.print(m4 - m3);
-    Serial.print(" ");
-    Serial.print(m5 - m4);
-    Serial.print(" ");
-    Serial.println(micros() - m1);
+  }
+
+  if (setpoint == -127) {
+    strncpy(&buf[8], " ERR", 4);
+  } 
+  else {
+    sprintf(&buf[8], "%4d", setpoint);
+  }
+
+  if (percentage == 255) {
+    strncpy(&buf[12], " ERR", 4);
+  } 
+  else {
+    sprintf(&buf[12], "%4d", percentage);
+  }
+
+  // 1 ms
+  lcd.setCursor(0,row);
+  // 15.3 ms
+  lcd.print(buf);
 }
 
 void readTemp() {
@@ -186,10 +184,11 @@ void readPot() {
     int in = analogRead(POT_PIN);
     if (in < 50) {
       in = 0;
-    } else
-    if (in > 980) {
-      in = 1023;
-    }
+    } 
+    else
+      if (in > 980) {
+        in = 1023;
+      }
     if (in != previousPotValue) {
       previousPotValue = in;
       //Serial.println("pot: ");
@@ -205,16 +204,23 @@ void readFan2() {
   byte buf [7];
 
   if (Wire.requestFrom(I2C_FAN2_ADDR, 7))  // if request succeeded
-    {
-      temp2 = Wire.read() << 8 | Wire.read();
-      rpm2 = Wire.read() << 8 | Wire.read();
-      setpointTemp2 = Wire.read() << 8 | Wire.read();
-      fanSpeedPercentage2 = Wire.read();
-    }
+  {
+    temp2 = Wire.read() << 8 | Wire.read();
+    rpm2 = Wire.read() << 8 | Wire.read();
+    setpointTemp2 = Wire.read() << 8 | Wire.read();
+    fanSpeedPercentage2 = Wire.read();
+  }
   else
-    {
+  {
+    temp2 = -127;
+    rpm2 = -1;
+    setpointTemp2 = -127;
+    fanSpeedPercentage2 = 255;
     // failure ... maybe slave wasn't ready or not connected
-    }
+  }
 }
+
+
+
 
 
