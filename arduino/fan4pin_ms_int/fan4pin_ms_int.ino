@@ -66,6 +66,12 @@ int volatile temp3 = -127;
 int volatile rpm3 = -1;
 int volatile setpointTemp3 = -127; 
 byte volatile fanSpeedPercentage3 = 255;
+
+//http://www.quinapalus.com/hd44780udg.html
+byte flame[8] = {
+4,6,14,29,25,25,10,4
+};
+
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 #endif
@@ -107,6 +113,7 @@ void setup()
 
 #ifdef MASTER
   lcd.begin(16,2);
+  lcd.createChar(0, flame);
   lcd.clear();
   displayFans();
 #endif
@@ -214,39 +221,43 @@ void displayScreen0() {
 }
 
 void displayScreen0temps(int t1, int t2, int t3) {
-  char buf[17];
-  buf[16] = 0;
+  lcd.setCursor(0,0);
+  lcd.print(char(0));
+  
+  char buf[16];
+  buf[15] = 0;
 
   if (t1 == -127) {
-    strncpy(buf, "ERR\337", 4);
+    strncpy(buf, " ERR\337", 5);
   } 
   else {
-    sprintf(buf, "%3d\337", t1);
+    sprintf(buf, "%4d\337", t1);
   }
 
   if (t2 == -127) {
-    strncpy(&buf[4], " ERR\337", 5);
+    strncpy(&buf[5], " ERR\337", 5);
   } 
   else {
-    sprintf(&buf[4], "%4d\337", t2);
+    sprintf(&buf[5], "%4d\337", t2);
   }
 
   if (t3 == -127) {
-    strncpy(&buf[9], " ERR\337", 5);
+    strncpy(&buf[10], " ERR\337", 5);
   } 
   else {
-    sprintf(&buf[9], "%4d\337", t3);
+    sprintf(&buf[10], "%4d\337", t3);
   }
-
-  strncpy(&buf[14], "  ", 2);
-
-  lcd.setCursor(0,0);
+  
   lcd.print(buf);
 }
 
 void displayScreen0rpms(int r1, int r2, int r3) {
-  char buf[17];
-  buf[16] = 0;
+  lcd.setCursor(0,1);
+  lcd.print(char(0));
+  lcd.print(" ");
+  
+  char buf[15];
+  buf[14] = 0;
 
   if (r1 == -1) {
     strncpy(buf, " ERR", 4);
@@ -269,9 +280,6 @@ void displayScreen0rpms(int r1, int r2, int r3) {
     sprintf(&buf[9], "%5d", r3);
   }
 
-  strncpy(&buf[14], "  ", 2);
-
-  lcd.setCursor(0,1);
   lcd.print(buf);
 }
 
