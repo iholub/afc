@@ -1,4 +1,4 @@
-//#define MASTER
+#define MASTER
 
 #ifdef MASTER
 #include <LiquidCrystal_I2C.h>
@@ -54,12 +54,18 @@ double pidOutput;
 PID myPID(&pidInput, &pidOutput, &pidSetpoint, 20, 1, 5, REVERSE);
 
 #ifdef MASTER
+#define SCR_POT_PIN A2 // pin of potentiometer to change screen
+int scrPotValue;
 #define I2C_FAN2_ADDR 0x31
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 int volatile temp2 = -127;
 int volatile rpm2 = -1;
 int volatile setpointTemp2 = -127; 
 byte volatile fanSpeedPercentage2 = 255;
+int volatile temp3 = -127;
+int volatile rpm3 = -1;
+int volatile setpointTemp3 = -127; 
+byte volatile fanSpeedPercentage3 = 255;
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 #endif
@@ -98,7 +104,7 @@ void setup()
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(TEMP_PERIOD);
   previousTempTime = previousPotTime = millis();
-  
+
 #ifdef MASTER
   lcd.begin(16,2);
   lcd.clear();
@@ -120,18 +126,18 @@ void loop()
   if (timeDiff >= TEMP_PERIOD) {
     detachInterrupt(0);
     previousTempTime = currTime;
-      rpmTimeSum += currTime - rpmTimeStart;
-      revolutionsSum += revolutions;
-      currRpmRead++;
-      if (currRpmRead == RPM_READ_COUNT) {
-        // rpm is revolutionsSum / 2 * 60000 / rpmTimeSum
-        unsigned long res = revolutionsSum * 30000l / rpmTimeSum;
-        rpm = res;
+    rpmTimeSum += currTime - rpmTimeStart;
+    revolutionsSum += revolutions;
+    currRpmRead++;
+    if (currRpmRead == RPM_READ_COUNT) {
+      // rpm is revolutionsSum / 2 * 60000 / rpmTimeSum
+      unsigned long res = revolutionsSum * 30000l / rpmTimeSum;
+      rpm = res;
 
-        currRpmRead = 0;
-        rpmTimeSum = 0;
-        revolutionsSum = 0;
-      }
+      currRpmRead = 0;
+      rpmTimeSum = 0;
+      revolutionsSum = 0;
+    }
 
     pidInput = sensors.getTempC(sensorAddress);
     tempInt = round(pidInput);
@@ -167,7 +173,7 @@ void loop()
 void rpm_fan(){
   revolutions++;
 }
- 
+
 void potToTemp() {
   int in = potValue;
   // treat values below 50 as 0 (min)
@@ -192,8 +198,81 @@ void readPot() {
 
 #ifdef MASTER
 void displayFans() {
-  displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
-  displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+  scrPotValue = analogRead(SCR_POT_PIN);
+  if (scrPotValue < 512) {
+    displayScreen0();
+  } 
+  else {
+    displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
+    displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+  }
+}
+
+void displayScreen0() {
+  displayScreen0temps(tempInt, temp2, temp3);
+  displayScreen0rpms(rpm, rpm2, rpm3);
+}
+
+void displayScreen0temps(int t1, int t2, int t3) {
+  char buf[17];
+  buf[16] = 0;
+
+  if (t1 == -127) {
+    strncpy(buf, "ERR\337", 4);
+  } 
+  else {
+    sprintf(buf, "%3d\337", t1);
+  }
+
+  if (t2 == -127) {
+    strncpy(&buf[4], " ERR\337", 5);
+  } 
+  else {
+    sprintf(&buf[4], "%4d\337", t2);
+  }
+
+  if (t3 == -127) {
+    strncpy(&buf[9], " ERR\337", 5);
+  } 
+  else {
+    sprintf(&buf[9], "%4d\337", t3);
+  }
+
+  strncpy(&buf[14], "  ", 2);
+
+  lcd.setCursor(0,0);
+  lcd.print(buf);
+}
+
+void displayScreen0rpms(int r1, int r2, int r3) {
+  char buf[17];
+  buf[16] = 0;
+
+  if (r1 == -1) {
+    strncpy(buf, " ERR", 4);
+  } 
+  else {
+    sprintf(buf, "%4d", r1);
+  }
+
+  if (r2 == -1) {
+    strncpy(&buf[4], "  ERR", 5);
+  } 
+  else {
+    sprintf(&buf[4], "%5d", r2);
+  }
+
+  if (r3 == -1) {
+    strncpy(&buf[9], "  ERR", 5);
+  } 
+  else {
+    sprintf(&buf[9], "%5d", r3);
+  }
+
+  strncpy(&buf[14], "  ", 2);
+
+  lcd.setCursor(0,1);
+  lcd.print(buf);
 }
 
 void displayFan(int row, int temp, int rpm, int setpoint, int percentage) {
@@ -264,6 +343,7 @@ void slavesRespond() {
   Wire.write(buffer, 7);
 }
 #endif
+
 
 
 
