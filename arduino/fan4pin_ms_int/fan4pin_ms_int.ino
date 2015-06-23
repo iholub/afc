@@ -1,5 +1,7 @@
 #define MASTER
 
+#define MAX_TEMP 50
+
 #ifdef MASTER
 #include <LiquidCrystal_I2C.h>
 #endif
@@ -24,6 +26,7 @@
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 DeviceAddress sensorAddress;
+boolean tempSensorError = true;
 
 #define SETPOINT_TEMP_MIN -5 // bottom bound for setpoint temperature
 #define SETPOINT_TEMP_MAX 125 // top bound for setpoint temperature
@@ -61,11 +64,11 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 int volatile temp2 = -127;
 int volatile rpm2 = -1;
 int volatile setpointTemp2 = -127; 
-byte volatile fanSpeedPercentage2 = 255;
+byte volatile fanSpeedPercentage2 = PERCENTAGE_ERROR;
 int volatile temp3 = -127;
 int volatile rpm3 = -1;
 int volatile setpointTemp3 = -127; 
-byte volatile fanSpeedPercentage3 = 255;
+byte volatile fanSpeedPercentage3 = PERCENTAGE_ERROR;
 
 byte flameIcon[8] = {
   B00000100,
@@ -88,10 +91,24 @@ byte fanIcon[8] = {
   B00000000
 };
 byte setpointIcon[8] = {
-  0,15,3,5,9,16,0,0
+B00000100,
+B00000110,
+B00000111,
+B00000110,
+B00000100,
+B00000100,
+B00000100,
+B00000000
 };
 byte percentageIcon[8] = {
-  31,17,10,4,10,17,31,0
+B00011100,
+B00010101,
+B00011110,
+B00000100,
+B00001111,
+B00010101,
+B00000111,
+B00000000
 };
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
@@ -121,9 +138,10 @@ void setup()
 
   oneWire.reset_search();
   if (oneWire.search(sensorAddress)) {
+    tempSensorError = false;
     sensors.setResolution(sensorAddress, TEMPERATURE_PRECISION);
+    sensors.requestTemperatures();
   }
-  sensors.requestTemperatures();
 
   potValue = analogRead(POT_PIN);
   potToTemp();
@@ -170,14 +188,21 @@ void loop()
       revolutionsSum = 0;
     }
 
-    pidInput = sensors.getTempC(sensorAddress);
-    tempInt = round(pidInput);
-    sensors.requestTemperatures();
+    if (!tempSensorError) {
+       pidInput = sensors.getTempC(sensorAddress);
+       tempInt = round(pidInput);
+       sensors.requestTemperatures();
+       
+       myPID.Compute();
+    }
 
-    myPID.Compute();
-
-    // pid value is from 0 to 255, OCR2B value should be from 0 to 79
-    int out = map(pidOutput, 0, 255, 0, 79);
+    int out;
+    if (tempInt == TEMP_ERROR || tempInt >= MAX_TEMP) {
+      out = 79; // set fan to max speed
+    } else {
+      // pid value is from 0 to 255, OCR2B value should be from 0 to 79
+      out = map(pidOutput, 0, 255, 0, 79);
+    }
     OCR2B = out;
     // fan speed in percent from 0% to 100%
     fanSpeedPercentage = map(out, 0, 79, 0, 100);
@@ -243,7 +268,7 @@ void readFan2() {
     temp2 = -127;
     rpm2 = -1;
     setpointTemp2 = -127;
-    fanSpeedPercentage2 = 255;
+    fanSpeedPercentage2 = PERCENTAGE_ERROR;
   }
 }
 #else
@@ -363,7 +388,7 @@ void writeRpm(char * buf, int pos, int r) {
 }
 
 void writePercentage(char * buf, int pos, int p) {
-  if (p == 255) {
+  if (p == PERCENTAGE_ERROR) {
     strncpy(&buf[pos], "ERR%", 4);
   } 
   else {
