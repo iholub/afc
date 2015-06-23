@@ -87,14 +87,19 @@ B00011111,
 B00011011,
 B00000000
 };
-
+byte setpointIcon[8] = {
+0,15,3,5,9,16,0,0
+};
+byte percentageIcon[8] = {
+31,17,10,4,10,17,31,0
+};
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 #endif
 
 void setup()
 {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
 
@@ -131,6 +136,8 @@ void setup()
   lcd.begin(16,2);
   lcd.createChar(1, flameIcon);
   lcd.createChar(2, fanIcon);
+  lcd.createChar(3, setpointIcon);
+  lcd.createChar(4, percentageIcon);
   lcd.clear();
   displayFans();
 #endif
@@ -221,20 +228,97 @@ void readPot() {
 }
 
 #ifdef MASTER
+int screenNumber = 0;
 void displayFans() {
   scrPotValue = analogRead(SCR_POT_PIN);
-  if (scrPotValue < 512) {
+  screenNumber = scrPotValue / 256; // 1024/4 = 256
+  if (screenNumber == 0) {
     displayScreen0();
   } 
-  else {
-    displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
-    displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+  else if (screenNumber == 1) {
+    dispScr('1', tempInt, rpm, setpointTemp, fanSpeedPercentage);
   }
+  else if (screenNumber == 2) {
+    dispScr('2', temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+  }
+  else if (screenNumber == 3) {
+    dispScr('3', temp3, rpm3, setpointTemp3, fanSpeedPercentage3);
+  }
+    //displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
+    //displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
 }
 
 void displayScreen0() {
   displayScreen0temps(tempInt, temp2, temp3);
   displayScreen0rpms(rpm, rpm2, rpm3);
+}
+
+void fillArr(char * buf) {
+  for (int i = 0; i < 16; i++) {
+    buf[i] = ' ';
+  }
+  buf[16] = 0;
+}
+
+void writeTemp(char * buf, int pos, int t) {
+  if (t == -127) {
+    strncpy(&buf[pos], "ERR\337", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%3d\337", t);
+  }
+}
+
+void writeRpm(char * buf, int pos, int r) {
+  // TODO > 9999
+  if (r == -1) {
+    strncpy(&buf[pos], " ERR", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%4d", r);
+  }
+}
+
+void writePerc(char * buf, int pos, int p) {
+  if (p == 255) {
+    strncpy(&buf[pos], "ERR%", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%3d%%", p);
+  }
+}
+
+void dispScr(char num, int temp, int rpm, int setpoint, int percentage) {
+  char buf[17];
+  //fillArr(buf);
+  buf[0] = num;
+  buf[1] = ':';
+  buf[2] = 1; // flame icon
+  buf[3] = ' ';
+  writeTemp(buf, 4, temp);
+  buf[8] = ' ';
+  buf[9] = 3; // setpoint icon
+  buf[10] = ' ';
+  writeTemp(buf, 11, setpoint);
+  buf[15] = ' ';
+  
+  lcd.setCursor(0,0);
+  lcd.print(buf);
+  
+  //fillArr(buf);
+  buf[0] = ' ';
+  buf[1] = ' ';
+  buf[2] = 2; // fan icon
+  buf[3] = ' ';
+  writeRpm(buf, 4, rpm);
+  buf[8] = ' ';
+  buf[9] = 4; // percentage icon
+  buf[10] = ' ';
+  writePerc(buf, 11, percentage);
+  buf[15] = ' ';
+  
+  lcd.setCursor(0,1);
+  lcd.print(buf);
 }
 
 void displayScreen0temps(int t1, int t2, int t3) {
