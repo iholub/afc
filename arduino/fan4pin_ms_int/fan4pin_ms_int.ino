@@ -68,30 +68,30 @@ int volatile setpointTemp3 = -127;
 byte volatile fanSpeedPercentage3 = 255;
 
 byte flameIcon[8] = {
-B00000100,
-B00000110,
-B00001110,
-B00011101,
-B00011001,
-B00011001,
-B00001010,
-B00000100
+  B00000100,
+  B00000110,
+  B00001110,
+  B00011101,
+  B00011001,
+  B00011001,
+  B00001010,
+  B00000100
 };
 byte fanIcon[8] = {
-B00000000,
-B00000000,
-B00011011,
-B00011111,
-B00001010,
-B00011111,
-B00011011,
-B00000000
+  B00000000,
+  B00000000,
+  B00011011,
+  B00011111,
+  B00001010,
+  B00011111,
+  B00011011,
+  B00000000
 };
 byte setpointIcon[8] = {
-0,15,3,5,9,16,0,0
+  0,15,3,5,9,16,0,0
 };
 byte percentageIcon[8] = {
-31,17,10,4,10,17,31,0
+  31,17,10,4,10,17,31,0
 };
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
@@ -228,198 +228,6 @@ void readPot() {
 }
 
 #ifdef MASTER
-int screenNumber = 0;
-void displayFans() {
-  scrPotValue = analogRead(SCR_POT_PIN);
-  screenNumber = scrPotValue / 256; // 1024/4 = 256
-  if (screenNumber == 0) {
-    displayScreen0();
-  } 
-  else if (screenNumber == 1) {
-    dispScr('1', tempInt, rpm, setpointTemp, fanSpeedPercentage);
-  }
-  else if (screenNumber == 2) {
-    dispScr('2', temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
-  }
-  else if (screenNumber == 3) {
-    dispScr('3', temp3, rpm3, setpointTemp3, fanSpeedPercentage3);
-  }
-    //displayFan(0, tempInt, rpm, setpointTemp, fanSpeedPercentage);
-    //displayFan(1, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
-}
-
-void displayScreen0() {
-  displayScreen0temps(tempInt, temp2, temp3);
-  displayScreen0rpms(rpm, rpm2, rpm3);
-}
-
-void fillArr(char * buf) {
-  for (int i = 0; i < 16; i++) {
-    buf[i] = ' ';
-  }
-  buf[16] = 0;
-}
-
-void writeTemp(char * buf, int pos, int t) {
-  if (t == -127) {
-    strncpy(&buf[pos], "ERR\337", 4);
-  } 
-  else {
-    sprintf(&buf[pos], "%3d\337", t);
-  }
-}
-
-void writeRpm(char * buf, int pos, int r) {
-  // TODO > 9999
-  if (r == -1) {
-    strncpy(&buf[pos], " ERR", 4);
-  } 
-  else {
-    sprintf(&buf[pos], "%4d", r);
-  }
-}
-
-void writePerc(char * buf, int pos, int p) {
-  if (p == 255) {
-    strncpy(&buf[pos], "ERR%", 4);
-  } 
-  else {
-    sprintf(&buf[pos], "%3d%%", p);
-  }
-}
-
-void dispScr(char num, int temp, int rpm, int setpoint, int percentage) {
-  char buf[17];
-  //fillArr(buf);
-  buf[0] = num;
-  buf[1] = ':';
-  buf[2] = 1; // flame icon
-  buf[3] = ' ';
-  writeTemp(buf, 4, temp);
-  buf[8] = ' ';
-  buf[9] = 3; // setpoint icon
-  buf[10] = ' ';
-  writeTemp(buf, 11, setpoint);
-  buf[15] = ' ';
-  
-  lcd.setCursor(0,0);
-  lcd.print(buf);
-  
-  //fillArr(buf);
-  buf[0] = ' ';
-  buf[1] = ' ';
-  buf[2] = 2; // fan icon
-  buf[3] = ' ';
-  writeRpm(buf, 4, rpm);
-  buf[8] = ' ';
-  buf[9] = 4; // percentage icon
-  buf[10] = ' ';
-  writePerc(buf, 11, percentage);
-  buf[15] = ' ';
-  
-  lcd.setCursor(0,1);
-  lcd.print(buf);
-}
-
-void displayScreen0temps(int t1, int t2, int t3) {
-  char buf[17];
-  buf[16] = 0;
-  buf[0] = 1; // flame icon
-  buf[1] = ' ';
-  
-  if (t1 == -127) {
-    strncpy(&buf[2], "ERR\337", 4);
-  } 
-  else {
-    sprintf(&buf[2], "%3d\337", t1);
-  }
-
-  if (t2 == -127) {
-    strncpy(&buf[6], " ERR\337", 5);
-  } 
-  else {
-    sprintf(&buf[6], "%4d\337", t2);
-  }
-
-  if (t3 == -127) {
-    strncpy(&buf[11], " ERR\337", 5);
-  } 
-  else {
-    sprintf(&buf[11], "%4d\337", t3);
-  }
-
-  lcd.setCursor(0,0);
-  lcd.print(buf);
-}
-
-void displayScreen0rpms(int r1, int r2, int r3) {
-  char buf[17];
-  buf[16] = 0;
-  buf[0] = 2; // fan icon
-  buf[1] = ' ';
-
-  if (r1 == -1) {
-    strncpy(&buf[2], " ERR", 4);
-  } 
-  else {
-    sprintf(&buf[2], "%4d", r1);
-  }
-
-  if (r2 == -1) {
-    strncpy(&buf[6], "  ERR", 5);
-  } 
-  else {
-    sprintf(&buf[6], "%5d", r2);
-  }
-
-  if (r3 == -1) {
-    strncpy(&buf[11], "  ERR", 5);
-  } 
-  else {
-    sprintf(&buf[11], "%5d", r3);
-  }
-
-  lcd.setCursor(0,1);
-  lcd.print(buf);
-}
-
-void displayFan(int row, int temp, int rpm, int setpoint, int percentage) {
-  // 16.5 ms
-  char buf[17];
-  buf[16] = 0;
-  if (temp == -127) {
-    strncpy(buf, "ERR", 3);
-  } 
-  else {
-    sprintf(buf, "%3d", temp);
-  }
-
-  if (rpm == -1) {
-    strncpy(&buf[3], "  ERR", 5);
-  } 
-  else {
-    sprintf(&buf[3], "%5d", rpm);
-  }
-
-  if (setpoint == -127) {
-    strncpy(&buf[8], " ERR", 4);
-  } 
-  else {
-    sprintf(&buf[8], "%4d", setpoint);
-  }
-
-  if (percentage == 255) {
-    strncpy(&buf[12], " ERR", 4);
-  } 
-  else {
-    sprintf(&buf[12], "%4d", percentage);
-  }
-
-  // 1 ms
-  lcd.setCursor(0,row);
-  // 15.3 ms
-  lcd.print(buf);
-}
 
 void readFan2() {
   int res = Wire.requestFrom(I2C_FAN2_ADDR, 7);
@@ -449,6 +257,118 @@ void slavesRespond() {
   buffer[5] = setpointTemp & 255;
   buffer[6] = fanSpeedPercentage;
   Wire.write(buffer, 7);
+}
+#endif
+
+#ifdef MASTER
+int screenNumber = 0;
+
+void displayFans() {
+  scrPotValue = analogRead(SCR_POT_PIN);
+  screenNumber = scrPotValue / 256; // 4 screens
+  if (screenNumber == 0) {
+    displayScreen0(tempInt, temp2, temp3, rpm, rpm2, rpm3);
+  } 
+  else if (screenNumber == 1) {
+    displayFan(1, tempInt, rpm, setpointTemp, fanSpeedPercentage);
+  }
+  else if (screenNumber == 2) {
+    displayFan(2, temp2, rpm2, setpointTemp2, fanSpeedPercentage2);
+  }
+  else if (screenNumber == 3) {
+    displayFan(3, temp3, rpm3, setpointTemp3, fanSpeedPercentage3);
+  }
+}
+
+void displayScreen0(int t1, int t2, int t3,
+int r1, int r2, int r3) {
+  char buf[17];
+  buf[0] = 1; // flame icon
+  buf[1] = ' ';
+  writeTemp(buf, 2, t1);
+  buf[6] = ' ';
+  writeTemp(buf, 7, t2);
+  buf[11] = ' ';
+  writeTemp(buf, 12, t3);
+  buf[16] = 0;
+
+  lcd.setCursor(0,0);
+  lcd.print(buf);
+
+  buf[0] = 2; // fan icon
+  buf[1] = ' ';
+  writeRpm(buf, 2, r1);
+  buf[6] = ' ';
+  writeRpm(buf, 7, r2);
+  buf[11] = ' ';
+  writeRpm(buf, 12, r3);
+  buf[16] = 0;
+
+  lcd.setCursor(0,1);
+  lcd.print(buf);
+}
+
+void displayFan(int num, int temp, int rpm, int setpoint, int percentage) {
+  char buf[17];
+  buf[0] = (num == 1) ? '1' : ((num == 2) ? '2' : '3');
+  buf[1] = ':';
+  buf[2] = 1; // flame icon
+  buf[3] = ' ';
+  writeTemp(buf, 4, temp);
+  buf[8] = ' ';
+  buf[9] = 3; // setpoint icon
+  buf[10] = ' ';
+  writeTemp(buf, 11, setpoint);
+  buf[15] = ' ';
+  buf[16] = 0;
+
+  lcd.setCursor(0,0);
+  lcd.print(buf);
+
+  buf[0] = ' ';
+  buf[1] = ' ';
+  buf[2] = 2; // fan icon
+  buf[3] = ' ';
+  writeRpm(buf, 4, rpm);
+  buf[8] = ' ';
+  buf[9] = 4; // percentage icon
+  buf[10] = ' ';
+  writePercentage(buf, 11, percentage);
+  buf[15] = ' ';
+  buf[16] = 0;
+
+  // 1 ms
+  lcd.setCursor(0,1);
+  // 15.3 ms
+  lcd.print(buf);
+}
+
+void writeTemp(char * buf, int pos, int t) {
+  if (t == -127) {
+    strncpy(&buf[pos], "ERR\337", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%3d\337", t);
+  }
+}
+
+void writeRpm(char * buf, int pos, int r) {
+  // TODO > 9999
+  if (r == -1) {
+    strncpy(&buf[pos], " ERR", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%4d", r);
+  }
+}
+
+void writePercentage(char * buf, int pos, int p) {
+  if (p == 255) {
+    strncpy(&buf[pos], "ERR%", 4);
+  } 
+  else {
+    sprintf(&buf[pos], "%3d%%", p);
+  }
 }
 #endif
 
