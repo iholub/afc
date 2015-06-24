@@ -42,3 +42,25 @@ pin A4: to SDA pin of lcd, with 10k pull-up resistor
 pin A5: to SCL pin of lcd, with 10k pull-up resistor  
 
 For Arduino Uno there are special pins SDA and SCL instead of A4 and A5.
+
+Wiring for 4-pin fan:  
+ - ground: to ground of power supply, to GND of arduino
+ - 12v: to 12v
+ - RPM: see Arduino wiring above
+ - PWM: see Arduino wiring above
+
+Wiring for 10k potentiometers:
+- ground: to ground
+- 5v: to 5v
+- data wire (usually in the middle): see Arduino wiring above
+
+Wiring for DS18B20:  
+- ground: to ground
+- 5v: to 5v
+- data wire (usually in the middle): see Arduino wiring above
+
+Wiring for lcd screen 1602:  
+- ground: to ground
+- 5v: to 5v
+- SDA: see Arduino wiring above
+- SCL: see Arduino wiring above
