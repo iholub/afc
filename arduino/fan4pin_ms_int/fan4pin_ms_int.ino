@@ -91,24 +91,24 @@ byte fanIcon[8] = {
   B00000000
 };
 byte setpointIcon[8] = {
-B00000100,
-B00000110,
-B00000111,
-B00000110,
-B00000100,
-B00000100,
-B00000100,
-B00000000
+  B00000100,
+  B00000110,
+  B00000111,
+  B00000110,
+  B00000100,
+  B00000100,
+  B00000100,
+  B00000000
 };
 byte percentageIcon[8] = {
-B00011100,
-B00010101,
-B00011110,
-B00000100,
-B00001111,
-B00010101,
-B00000111,
-B00000000
+  B00011100,
+  B00010101,
+  B00011110,
+  B00000100,
+  B00001111,
+  B00010101,
+  B00000111,
+  B00000000
 };
 #else
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
@@ -116,7 +116,6 @@ B00000000
 
 void setup()
 {
-  Serial.begin(9600);
   pinMode(READ_RPM_PIN, INPUT);
   pinMode(PWM_PIN, OUTPUT);
 
@@ -189,17 +188,18 @@ void loop()
     }
 
     if (!tempSensorError) {
-       pidInput = sensors.getTempC(sensorAddress);
-       tempInt = round(pidInput);
-       sensors.requestTemperatures();
-       
-       myPID.Compute();
+      pidInput = sensors.getTempC(sensorAddress);
+      tempInt = round(pidInput);
+      sensors.requestTemperatures();
+
+      myPID.Compute();
     }
 
     int out;
     if (tempInt == TEMP_ERROR || tempInt >= MAX_TEMP) {
       out = 79; // set fan to max speed
-    } else {
+    } 
+    else {
       // pid value is from 0 to 255, OCR2B value should be from 0 to 79
       out = map(pidOutput, 0, 255, 0, 79);
     }
@@ -396,6 +396,7 @@ void writePercentage(char * buf, int pos, int p) {
   }
 }
 #endif
+
 
 
 
