@@ -2,6 +2,10 @@
 
 Arduino application to control speed of 4-pin fan (cooler) depending on temperature. Fan speed is determined by PID algorithm. Information is displayed on 1602 screen.
 
+![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341615/4ffc93bc-1ac6-11e5-80be-25e4d682c45d.jpg)
+![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341614/4ff7ad16-1ac6-11e5-9c4c-c71db2fc96cd.jpg)
+![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341616/50032efc-1ac6-11e5-9edf-95fa8ba489ca.jpg)
+
 Hardware required for 1 fan:
 - Arduino Pro Mini 5v or similar (Arduino Uno, Arduino Nano)
 - 12v 4-pin pc fan (cooler)
