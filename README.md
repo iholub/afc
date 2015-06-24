@@ -5,6 +5,8 @@ Arduino application to control speed of 4-pin fan (cooler) depending on temperat
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341615/4ffc93bc-1ac6-11e5-80be-25e4d682c45d.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341614/4ff7ad16-1ac6-11e5-9c4c-c71db2fc96cd.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341616/50032efc-1ac6-11e5-9edf-95fa8ba489ca.jpg)
+![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341840/128c2932-1ac8-11e5-82f2-75b205cd3236.jpg)
+![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341841/12abd14c-1ac8-11e5-88c0-140e438a0d5f.jpg)
 
 Hardware required for 1 fan:
 - Arduino Pro Mini 5v or similar (Arduino Uno, Arduino Nano)
