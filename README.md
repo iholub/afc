@@ -1,5 +1,3 @@
-# Dillinger
-
 #Arduino Fan Control
 
 Arduino application to control speed of 4-pin fan (cooler) depending on temperature. Fan speed is determined by PID algorithm. Information is displayed on 1602 screen.
