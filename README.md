@@ -13,8 +13,10 @@ Replace fan in power supply to 4-wire fan.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397853/6cf33c34-1dda-11e5-9bda-53fb346738c9.jpg)
 Prepare DS18B20 temperature sensor.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397857/7b53c1d6-1dda-11e5-9349-af0bc07514c0.jpg)
-Use termal glue.
+Use termal glue,
+for example this:
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397854/712be756-1dda-11e5-89f9-9b812eef99ef.jpg)
+or this:
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397855/74793c7e-1dda-11e5-9956-6922dc5acb6e.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397858/7ffbaed8-1dda-11e5-8ff4-e37fda732b33.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397871/dbce0ee0-1dda-11e5-84cc-f730d265581f.jpg)
