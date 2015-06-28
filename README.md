@@ -9,7 +9,7 @@ Arduino application to control speed of 4-pin fan (cooler) depending on temperat
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8341841/12abd14c-1ac8-11e5-88c0-140e438a0d5f.jpg)
 Installing DS18B20 temperature sensor and 4-wire fan to power supply:
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397852/664c891c-1dda-11e5-8797-18bbc4211376.jpg)
-Replcace fan to 4-wire fan.
+Replace fan in power supply to 4-wire fan.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397853/6cf33c34-1dda-11e5-9bda-53fb346738c9.jpg)
 Prepare DS18B20 temperature sensor.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397857/7b53c1d6-1dda-11e5-9349-af0bc07514c0.jpg)
@@ -18,10 +18,12 @@ Use termal glue.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397855/74793c7e-1dda-11e5-9956-6922dc5acb6e.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397858/7ffbaed8-1dda-11e5-8ff4-e37fda732b33.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397871/dbce0ee0-1dda-11e5-84cc-f730d265581f.jpg)
+Fix sensor with hot glue gun.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397859/85e433ba-1dda-11e5-9d51-50e2013daba8.jpg)
 Installing DS18B20 temperature sensor to video card:
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397863/9e6ece4a-1dda-11e5-9ed7-18f2d58c87dc.jpg)
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397866/a50ea19e-1dda-11e5-9f8e-8160730c7e62.jpg)
+Install 4-wire fan in the place where it can blow to video card.
 ![alt tag](https://cloud.githubusercontent.com/assets/9932463/8397867/aa3323b6-1dda-11e5-8856-efa8a70de12e.jpg)
 
 Hardware required for 1 fan:
